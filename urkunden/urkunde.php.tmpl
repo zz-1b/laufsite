@@ -1,0 +1,52 @@
+<?php
+require('fpdf.php');
+	
+    function cleanint($str)
+    {
+	if( filter_var($str, FILTER_VALIDATE_INT) )
+	{
+	    return (int)$str;
+	}
+	else
+	    return 0;
+    }
+
+    $meldeid = cleanint($_GET['meldeid']);
+    try {  # Verbindungsfehler fangen
+	$dbh = new PDO('mysql:host=localhost;dbname=ERSETZEDBNAME', 'ERSETZEDBUSER', 'ERSETZEDBPASSWD');
+	$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try { # SQL fehler fangen
+
+	    $sql = "SELECT teilnehmer.meldeid, vorname, nachname, geburtsjahr, zeit,altersklasse(geburtsjahr,geschlecht) as altersklasse from teilnehmer join zeiten on teilnehmer.meldeid = zeiten.meldeid where zeiten.meldeid=$meldeid;";
+
+	    foreach( $dbh->query($sql) as $row )
+	    {
+		$linksrand=65;
+		$pdf = new FPDF();
+	    	$pdf->AddPage();
+		$pdf->Image('Urkunde.jpg',5,5,200);
+	    	$pdf->SetFont('Arial','B',32);
+		$pdf->SetXY($linksrand,120);
+	    	$pdf->Cell(80,40,utf8_decode($row['vorname']." ".$row['nachname']));
+	    	$pdf->SetFont('Arial','B',16);
+#	    	$pdf->Cell(80,150,utf8_decode($row['LaufName']));
+		$pdf->SetXY($linksrand,160);
+	    	$pdf->Cell(80,10,"Laufzeit: ".utf8_decode($row['zeit']));
+		$pdf->SetXY($linksrand,170);
+		$pdf->Cell(80,10,"Gesamtwertung: ".utf8_decode($row['Platz']).". Platz");
+		$pdf->SetXY($linksrand,180);
+	    	$pdf->Cell(80,10,"Altersklassenwertung: ".utf8_decode($row['altersklasse']).". Platz");
+	    	$pdf->Output();
+	    }
+	} catch (Exception $e) {
+	    echo "Failed: " . $e->getMessage();
+	    die();
+	}
+
+	$dbh = null;
+    } catch (PDOException $e) {
+	print "Error!: " . $e->getMessage() . "<br/>";
+	die();
+    }
+?>

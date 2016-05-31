@@ -1,0 +1,78 @@
+<?php 
+include('kopf.html');
+
+    function cleanint($str)
+    {
+	if( filter_var($str, FILTER_VALIDATE_INT) )
+	{
+	    return (int)$str;
+	}
+	else
+	    return 0;
+    }
+
+    $laufnr = cleanint($_GET['laufnr']);
+
+    # Anti-Hack
+
+    try {  # Verbindungsfehler fangen
+	$dbh = new PDO('mysql:host=localhost;dbname=ERSETZEDBNAME', 'ERSETZEDBUSER', 'ERSETZEDBPASSWD');
+	$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try { # SQL fehler fangen
+
+	$sql = "CREATE TEMPORARY TABLE IF NOT EXISTS ranking AS
+	        ( SELECT t.meldeid, t.vorname, t.nachname, t.verein,
+	       	       t.altersklasse,
+		       zeit,
+		       @cR:=@cR+1 AS platz FROM teilnehmer t, zeiten z, (select @cR:=0) q
+                  WHERE t.meldeid=z.meldeid AND laufnummer=".$laufnr." ORDER BY z.zeit );";
+		
+	$dbh->exec($sql);
+	$sql="select * from ranking;"; 
+
+	    print "<table><tr>"
+	      ."<td>Platz</td>"
+	      ."<td>Vorname</td>"	      
+	      ."<td>Nachname</td>"
+	      ."<td>Verein</td>"
+  	      ."<td>Altersklasse</td>"
+       	      ."<td>AK-Platz</td>"
+	      ."<td>Zeit</td>"
+	      ."<td></td>"
+	      ."</tr>";
+	    $roweven=0;
+	    $rowcount=1;
+	    foreach( $dbh->query($sql) as $row )
+	    {
+		print "<tr class='row_".$roweven."'>"
+		    ."<td>".$row['platz']."</td>"
+
+   		    ."<td>".$row['vorname']."</td>"
+		    ."<td>".$row['nachname']."</td>"
+		    ."<td>".$row['verein']."</td>"
+		    ."<td>".$row['altersklasse']."</td>"
+		    ."<td>".$row['akplatz']."</td>"
+		    ."<td>".$row['zeit']."</td>"
+		    ."<td><a href=\"urkunden/urkunde.php?meldeid=".$row['meldeid']."\">Urkunde</a></td>"
+		    ."</tr>";
+		    $roweven=1-$roweven;
+		    ++$rowcount;
+	    }
+	    print "</table>";
+
+	} catch (Exception $e) {
+	    echo "Failed: " . $e->getMessage();
+	    die();
+	}
+
+	$dbh = null;
+    } catch (PDOException $e) {
+	print "Error!: " . $e->getMessage() . "<br/>";
+	die();
+    }
+include('fuss.html');
+?>
+
+
+

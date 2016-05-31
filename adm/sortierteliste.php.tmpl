@@ -1,0 +1,104 @@
+<?php 
+include('kopf.html');
+require_once('../lib/laufab.php');
+
+    # Anti-Hack
+
+    try {  # Verbindungsfehler fangen
+    	$lah = new laufab();
+
+print "<h2>Anmeldungen</h2>\n";
+print $lah->Meldestand();
+print "<p>\n";
+
+print "<a href=\"csvdownload.php\">Alle Anmeldungen als CSV-Datei</a><p>\n";
+
+print "<a href=\"sortierteliste.php\">Nach Name/Vorname sortiert</a>"
+     ."<a href=\"zeitliste.php\">Nach Anmeldereihenfolge sortiert</a>";
+
+	$dbh = new PDO('mysql:host=localhost;dbname=ERSETZEDBNAME', 'ERSETZEDBUSER', 'ERSETZEDBPASSWD');
+	$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try { # SQL fehler fangen
+
+	    $sql = "SELECT t.meldeid, t.vorname, t.nachname, t.geburtsjahr, t.geschlecht, t.altersklasse,
+                           t.plz, t.ort, t.strasse, t.hausnr, t.meldezeitpunkt,
+	    	   	   t.telefon, t.verein, t.email,
+                           t.schnellsteraltenberger, t.tus, l.kuerzel 
+		    FROM teilnehmer t, teilnahme n, laeufe l 
+                    WHERE t.meldeid=n.meldeid and n.laufnummer=l.laufnummer
+                    ORDER BY ";
+	  if( basename($_SERVER['PHP_SELF']) == "zeitliste.php") 
+	    {
+	      $sql=$sql."meldezeitpunkt";
+	    }
+	  else
+	    {
+	      $sql=$sql."nachname, vorname";
+	    }
+	    print "<table><tr>"
+	      ."<td>Nr.</td>"
+	      ."<td>Lauf</td>"
+	      ."<td>Vorname</td>"
+	      ."<td>Nachname</td>"
+	      ."<td>Geburtsjahr</td>"
+	      ."<td>Geschlecht</td>"
+ 	      ."<td>Altersklasse</td>"
+ADRESSESTART
+	      ."<td>PLZ</td>"
+	      ."<td>Ort</td>"
+	      ."<td>Strasse</td>"
+	      ."<td>Hausnr.</td>"
+	      ."<td>Telefon</td>"
+ADRESSEENDE
+	      ."<td>Verein</td>"
+	      ."<td>email</td>"
+	      ."<td>Schnellster</td>"
+	      ."<td>TuS</td>"
+	      ."<td>Anmeldezeit</td>"
+	      ."</tr>";
+	    $roweven=0;
+	    $rowcount=1;
+	    foreach( $dbh->query($sql) as $row )
+	    {
+		print "<tr class='row_".$roweven."'>"
+		    ."<td>".$rowcount."</td>"
+		    ."<td>".$row['kuerzel']."</td>"
+		    ."<td>".$row['vorname']."</td>"
+		    ."<td>".$row['nachname']."</td>"
+		    ."<td>".$row['geburtsjahr']."</td>"
+		    ."<td>".$row['geschlecht']."</td>"
+		    ."<td>".$row['altersklasse']."</td>"	
+ADRESSESTART
+   		    ."<td>".$row['plz']."</td>"
+		    ."<td>".$row['ort']."</td>"
+		    ."<td>".$row['strasse']."</td>"
+		    ."<td>".$row['hausnr']."</td>"
+		    ."<td>".$row['telefon']."</td>"
+ADRESSEENDE
+		    ."<td>".$row['verein']."</td>"
+		    ."<td>".$row['email']."</td>"
+		    ."<td>".$row['schnellsteraltenberger']."</td>"
+		    ."<td>".$row['tus']."</td>"
+		    ."<td>".$row['meldezeitpunkt']."</td>"
+		    ."</tr>";
+		    $roweven=1-$roweven;
+		    ++$rowcount;
+	    }
+	    print "</table>";
+
+	} catch (Exception $e) {
+	    echo "Failed: " . $e->getMessage();
+	    die();
+	}
+
+	$dbh = null;
+    } catch (PDOException $e) {
+	print "Error!: " . $e->getMessage() . "<br/>";
+	die();
+    }
+include('fuss.html');
+?>
+
+
+

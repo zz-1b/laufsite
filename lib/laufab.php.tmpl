@@ -1,0 +1,175 @@
+<?php
+
+class laufab
+{
+    private $dbh;
+    function __construct() {
+	$this->dbh = new PDO('mysql:host=localhost;dbname=ERSETZEDBNAME', 'ERSETZEDBUSER', 'ERSETZEDBPASSWD');
+	$this->dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    }
+
+    function __destruct() {
+    }
+
+    public function ErzeugeTeilnehmer( $vorname, $nachname, $plz, $ort,
+	$strasse, $hausnr, $telefon, $geburtsjahr, $geschlecht, $verein,
+	$email, $tus, $schnellster)
+    {
+	$this->dbh->beginTransaction();
+	$this->dbh->exec("INSERT INTO meldenummern VALUE (DEFAULT);");
+	$res_row = $this->dbh->query("SELECT max(meldeid) from meldenummern;")->fetch();
+
+	# Diese ID wird dank der Transaktion eindeutig sein, selbst wenn zeitgleich noch eine Anmeldung läuft
+	$meldeid = $res_row['max(meldeid)'];
+
+	# altersklasse berechnen
+	$aks='';
+	$age=ERSETZEJAHR-(int)$geburtsjahr;
+	if($age<8):
+	    $aks='KU8';
+	elseif($age<10):
+	    $aks='KU10';
+	elseif($age<12):
+	    $aks='KU12';
+	elseif($age<14):
+	    $aks='JU14';
+	elseif($age<16):
+	    $aks='JU16';
+	elseif($age<18):
+	    $aks='JU18';
+	elseif($age<20):
+	    $aks='JU20';
+	elseif($age<23):
+	    $aks='U23';
+	elseif($age<30):
+	    $aks='';
+        else:
+	    $akgrenze=85;
+	    while( $age < $akgrenze ) {
+		$akgrenze-=5;
+	    }
+	    $aks=$akgrenze;
+	endif;
+	$altersklasse=strtoupper($geschlecht).$aks;
+	
+	$sql = $this->dbh->prepare("INSERT INTO teilnehmer
+                            (meldeid, vorname, nachname, plz, ort, strasse, hausnr, geburtsjahr, geschlecht, altersklasse,
+                             telefon, verein, email, tus, schnellsteraltenberger) 
+                              VALUES ( :meldeid, :vorname, :nachname, :plz, :ort, :strasse, :hausnr,
+                                       :geburtsjahr, :geschlecht, :altersklasse, :telefon, :verein, :email, :tus, :schnellster)");
+	$sql->execute(array('meldeid' => $meldeid,
+			    'vorname' => htmlspecialchars($vorname),
+			    'nachname' => htmlspecialchars($nachname),
+			    'plz' => (int)($plz),
+			    'ort' => htmlspecialchars($ort),
+			    'strasse' => htmlspecialchars($strasse),
+			    'hausnr' => htmlspecialchars($hausnr),
+			    'geburtsjahr' => (int)($geburtsjahr),
+			    'geschlecht' => htmlspecialchars($geschlecht),
+       			    'altersklasse' => htmlspecialchars($altersklasse),
+			    'telefon' => htmlspecialchars($telefon),
+			    'verein' => htmlspecialchars($verein),
+			    'email' => htmlspecialchars($email),
+			    'tus' => $tus,
+			    'schnellster' => $schnellster)
+	    );
+	$this->dbh->commit();
+	return $meldeid;
+    }
+    
+    public function Meldestand()
+    {
+	$sqlmst="SELECT kuerzel,COUNT(*) AS anzahl "
+	        ."FROM teilnahme t JOIN laeufe l "
+		."WHERE t.laufnummer=l.laufnummer "
+		."GROUP BY l.laufnummer "
+		."UNION "
+		."SELECT 'Gesamt', count(meldeid) AS anzahl FROM teilnehmer;";
+	
+	$meldestand="<table><tr><td><b>Lauf</b></td><td><b>Anmeldungen</b></td>\n";
+	foreach ($this->dbh->query($sqlmst) as $row)
+	{
+	    $meldestand=$meldestand."<tr><td>$row[0]</td><td align=\"right\">$row[1]</td></tr>\n";
+	}
+	$meldestand=$meldestand."</table>\n";
+	return $meldestand;
+    }
+
+    public function ListeTeilnehmer( $sortierung )
+    {
+
+	$sql = "SELECT t.vorname, t.nachname, t.verein, l.titel
+		FROM teilnehmer t, teilnahme n, laeufe l 
+                WHERE t.meldeid=n.meldeid and n.laufnummer=l.laufnummer";
+	if($sortierung=='verein'):
+	    $sql.=" ORDER BY t.verein, t.nachname, t.vorname;";
+	elseif($sortierung=='lauf'):
+	    $sql.=" ORDER BY l.kuerzel, t.nachname, t.vorname;";
+        else:
+	    $sql.=" ORDER BY t.nachname, t.vorname;"; 
+	endif;
+
+	$tabelle=" <table><tr class='tkopf'>"
+	    ."<td>Lauf</td>"
+	    ."<td>Vorname</td>"
+	    ."<td>Nachname</td>"
+	    ."<td>Ort</td>"
+	    ."<td>Verein</td>"
+	    ."</tr>";
+	foreach ($this->dbh->query($sql) as $row)
+	{
+	    $tabelle.="<tr>"
+		."<td>".$row['titel']."</td>"
+		."<td>".$row['vorname']."</td>"
+		."<td>".$row['nachname']."</td>"
+		."<td>".$row['ort']."</td>"
+		."<td>".$row['verein']."</td>"		
+		."</tr>\n";
+	}
+	return $tabelle;
+    }
+ 
+    public function AnmeldungenCSV()
+    {
+	
+	$sql = "SELECT t.meldeid, t.vorname, t.nachname, t.geburtsjahr,t.geschlecht, t.altersklasse,
+ADRESSESTART
+                           t.plz, t.ort, t.strasse, t.hausnr, t.telefon,
+ADRESSEENDE
+                           t.verein, t.email,
+                           t.schnellsteraltenberger, t.tus, l.kuerzel, t.meldezeitpunkt
+		    FROM teilnehmer t, teilnahme n, laeufe l 
+                    WHERE t.meldeid=n.meldeid and n.laufnummer=l.laufnummer;";
+	
+	$f = fopen('php://output', 'w');
+	
+	# Tabellenkopf
+	$tabellenkopf=array( 'Nr',
+			     'Vorname',
+			     'Nachname',
+			     'Geburtsjahr',
+			     'Geschlecht',
+			     'Altersklasse',
+			     ADRESSESTART
+			     'PLZ',
+			     'Ort',
+			     'Strasse',
+			     'Hausnr.',
+			     'Telefon',
+			     ADRESSEENDE
+			     'Verein',
+			     'email',
+			     'Schnellster',
+			     'TuS',
+			     'Lauf',
+			     'Anmeldezeit'
+	    );
+	
+	fputcsv($f, $tabellenkopf,';');
+	foreach( $this->dbh->query($sql,PDO::FETCH_NUM) as $row ) {
+	    fputcsv($f, $row, ';');
+	}
+	
+    }
+}		    
+?>

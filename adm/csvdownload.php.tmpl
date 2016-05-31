@@ -1,0 +1,25 @@
+<?php 
+
+require_once('../lib/laufab.php');
+
+    # Anti-Hack
+try { 
+    try {  # Verbindungsfehler fangen
+    	$lah = new laufab();
+	header('Content-Type: application/csv');
+	header('Content-Disposition: attachment; filename="BerglaufAnmeldungen.csv";');
+	
+	print $lah->AnmeldungenCSV();
+	
+    } catch (Exception $e) {
+	echo "Failed: " . $e->getMessage();
+	die();
+    }
+    
+    $dbh = null;
+} catch (PDOException $e) {
+    print "Error!: " . $e->getMessage() . "<br/>";
+    die();
+}
+?>
+    

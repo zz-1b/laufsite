@@ -1,0 +1,208 @@
+<?php
+require_once('lib/laufab.php');
+session_start();
+if(isset($_SESSION['captcha_spam']) AND $_POST["sicherheitscode"] == $_SESSION['captcha_spam'])
+{
+    unset($_SESSION['captcha_spam']);
+
+    # Anti-Hack
+    function cleanstr($str)
+    {
+	$strs = strtr($str,";*\"", "xxx");
+	return filter_var($strs, FILTER_SANITIZE_STRING);
+    }
+
+    function cleanint($str)
+    {
+	if( filter_var($str, FILTER_VALIDATE_INT) )
+	{
+	    return (int)$str;
+	}
+	else
+	    return 0;
+    }
+
+    # Nach der Validierung/Reinigung duerfen die POST-Argumente nicht weiter verwendet werden!
+    # TODO: Streckenauswahl
+    $vorname = cleanstr($_POST['vorname']);
+    $nachname = cleanstr($_POST['nachname']);
+    $plz = cleanstr($_POST['plz']);
+    $ort = cleanstr($_POST['ort']);
+    $strasse = cleanstr($_POST['strasse']);
+    $hausnr = cleanstr($_POST['hausnr']);
+    $geburtsjahr = cleanint($_POST['geburtsjahr']);
+    $geschlecht = strtoupper(substr(cleanstr($_POST['geschlecht']),0,1));
+    $telefon = cleanstr($_POST['telefon']);
+    $verein = cleanstr($_POST['verein']);
+    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
+    $tus = cleanint($_POST['tus']);
+    $schnellster = cleanint($_POST['schnellsteraltenberger']);
+    $zustimmung = cleanint($_POST['datenerkl']);
+
+    if( $zustimmung != 1)
+    {
+        echo "Sie müssen den Teilnahmebedingungen zustimmen um sich anmelden zu können.<p>"
+	."Bitte gehen sie zur&uuml;ck <b>und laden sie die Seite neu</b>, lesen und haken die"
+	." Teilnahmebedingung ab. Geben Sie auch den Sicherheitscode neu ein.";
+	die();
+    }
+
+    try {  # Verbindungsfehler fangen
+      $dbh = new PDO('mysql:host=localhost;dbname=ERSETZEDBNAME', 'ERSETZEDBUSER', 'ERSETZEDBPASSWD');
+
+      $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	# meldenummer ermitteln
+
+	try { # SQL fehler fangen
+
+	    $lah = new laufab();
+
+	    $meldeid = $lah->ErzeugeTeilnehmer($vorname, $nachname, $plz, $ort,
+				    $strasse, $hausnr, $telefon, $geburtsjahr, $geschlecht, $verein,
+				    $email, $tus, $schnellster);
+					
+	    $sql = $dbh->prepare("INSERT INTO teilnahme (meldeid, laufnummer) VALUES ( :meldeid, :laufnummer )");
+	    foreach ($_POST['strecke'] as $laufnummer) 
+	    {
+		$sql->execute(array('meldeid' => $meldeid,
+				    'laufnummer' => (int)($laufnummer)));
+	    }
+
+
+
+	    # Ergebnis auslesen
+	    $sqlq = "SELECT t.meldeid, vorname, nachname, geburtsjahr, plz, ort, strasse, hausnr, meldezeitpunkt,
+	    	   	   geschlecht, telefon, verein, email, schnellsteraltenberger, tus, l.titel,startgeld "
+		     ."FROM teilnehmer t, teilnahme n, laeufe l "
+		     ."WHERE t.meldeid=$meldeid AND n.meldeid=$meldeid AND n.laufnummer=l.laufnummer;";
+	    $email="";
+	    $mtabelle="<table><tr style=\"background-color: #0d5cab;\">"
+#	      ."<td>Nr.</td>"
+	      ."<td>Vorname</td>"
+	      ."<td>Nachname</td>"
+	      ."<td>Geburtsjahr</td>"
+#	      ."<td>PLZ</td>"
+	      ."<td>Ort</td>"
+#	      ."<td>Strasse</td>"
+#	      ."<td>Hausnr.</td>"
+	      ."<td>Geschlecht</td>"
+#	      ."<td>Telefon</td>"
+	      ."<td>Verein</td>"
+	      ."<td>email</td>"
+	      ."<td>Schnellste(r) Altenberger(in)</td>"
+#	      ."<td>TuS</td>"
+#	      ."<td>Anmeldezeit</td>"
+	      ."<td>Lauf</td>"
+	      ."<td>Startgeld</td>"
+	      ."</tr>\n";
+	    $roweven=0;
+	    foreach( $dbh->query($sqlq) as $row )
+	    {
+		$mtabelle=$mtabelle."<tr class='row_".$roweven."'>"
+#		    ."<td>".$row['meldeid']."</td>"
+		    ."<td>".$row['vorname']."</td>"
+		    ."<td>".$row['nachname']."</td>"
+		    ."<td>".$row['geburtsjahr']."</td>"
+#		    ."<td>".$row['plz']."</td>"
+		    ."<td>".$row['ort']."</td>"
+#		    ."<td>".$row['strasse']."</td>"
+#		    ."<td>".$row['hausnr']."</td>"
+		    ."<td>".$row['geschlecht']."</td>"
+#		    ."<td>".$row['telefon']."</td>"
+		    ."<td>".$row['verein']."</td>"
+		    ."<td>".$row['email']."</td>"
+		    ."<td>".($row['schnellsteraltenberger']=1?'ja':'nein')."</td>"
+#		    ."<td>".$row['tus']."</td>"
+#		    ."<td>".$row['meldezeitpunkt']."</td>"
+		    ."<td>".$row['titel']."</td>"
+		    ."<td>".$row['startgeld']." Euro</td>"
+		    ."</tr>\n";
+		$roweven=1-$roweven;
+		$email=$row['email']; # fuer die Antwort
+	    }
+
+	    $mtabelle=$mtabelle."</table>";
+
+	    # Antworttext erzeugen
+	    $antwort="Hallo ".htmlspecialchars($vorname)
+		." ".htmlspecialchars($nachname).".<p>"
+		."Sie sind nun wie folgt angemeldet:<p>".$mtabelle;
+
+	    $antwort=$antwort."<p>Aktuelle Informationen gibt es weiterhin unter "
+		."<a href=\"http://www.laufen-in-altenberge.de\">www.laufen-in-altenberge.de</a>."
+		."<p>Das Startgeld bringen Sie bitte zur Startnummernausgabe im "
+		."<a href=\"https://www.google.de/maps/place/Altentagesst%C3%A4tte+im+Karl-Leisner-Haus/@52.04597,7.46716,15z/data=!4m5!3m4!1s0x0:0xc9bd735dfb479188!8m2!3d52.04597!4d7.46716\" target=\"bla\">Karl-Leisner-Haus</a> mit.<p> Viel Erfolg!";
+
+	    # ... Ausgeben!
+	    echo $antwort;
+
+      	    # Benachrichtigungen verschicken
+
+	    $omail="<html><head></head><body><h3>Neue Anmeldung:</h3>\n".$mtabelle;
+
+	    $sqlmst="SELECT kuerzel,COUNT(*) AS anzahl "
+		."FROM teilnahme t JOIN laeufe l "
+		."WHERE t.laufnummer=l.laufnummer "
+		."GROUP BY l.laufnummer;";
+
+	    $meldestand="<table><tr><td>Lauf</td><td>Anmeldungen</td>\n";
+	    foreach ($dbh->query($sqlmst) as $row) {
+	      $meldestand=$meldestand."<tr><td>$row[0]</td><td>$row[1]</td></tr>\n";
+	    }
+	    $meldestand=$meldestand."</table>\n";
+
+	    $omail=$omail."<p>".$meldestand;
+	    
+	    $sqlres = "SELECT count(meldeid) FROM teilnehmer;";
+	    foreach ($dbh->query($sqlres) as $row) {
+	      $omail=$omail."<p>$row[0]";
+	    }
+	    $omail=$omail." Teilnehmer insgesamt</p></body></html>";
+
+	    ## mailversand
+	    $header='MIME-Version: 1.0' . "\r\n";
+	    $header.='Content-type: text/html; charset=iso-8859-1' . "\r\n";
+	    $header.='From:nicht-antworten@laufen-in-altenberge.de'."\r\n";
+
+	    # bestaetigung schicken
+	    $awmail="<html><head></head><body>".$antwort."</body></html>";
+
+	    if (filter_var($email, FILTER_VALIDATE_EMAIL) === false)
+	    {
+		print "<p> Sie haben keine g&uuml;ltige email-Adresse angegeben"
+		    ." und erhalten daher keine weitere Benachrichtigung.\n";
+	    }
+	    else
+	    {
+		print "<p> Sie erhalten in k&uuml;rze die Anmeldebest&auml;tigung per email.\n";
+		mail($email, 'Anmeldung zum VERANSTALTUNGSTITEL', $awmail, $header);
+	    }
+	    
+	    # orga-Mails verschicken
+	    $sqlmail="SELECT email from orgamail;";
+	    foreach( $dbh->query($sqlmail) as $rowto )
+	    {
+ 	      mail($rowto['email'], 'Anmeldung zum VERANSTALTUNGSTITEL', $omail, $header);
+	    }
+	} catch (Exception $e) {
+	    print "Allg. Exception...<br>\n";
+	    $dbh->rollBack();
+	    # TODO: Im Produktionsbetrieb keine detaillierte Fehlermeldung ausgeben.
+	    echo "Failed: " . $e->getMessage();
+	    die();
+	}
+
+	$dbh = null;
+    } catch (PDOException $e) {
+	# TODO: Im Produktionsbetrieb keine detaillierte Fehlermeldung ausgeben.
+	print "Error!: " . $e->getMessage() . "<br/>";
+	die();
+    }
+}
+else
+{
+    echo "Der Sicherheitscode war falsch. Bitte zurückgehen, Seite neu laden, neuen Code eingeben und erneut versuchen.";
+}
+?>
+

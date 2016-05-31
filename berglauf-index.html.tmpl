@@ -1,0 +1,179 @@
+<!DOCTYPE HTML>
+<!-- HTML5 -->
+
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="laufstil.css">
+
+  <script src="jquery.min.js"></script>
+  <script language="javascript" type="text/javascript">  
+    $(document).ready(function()
+		  {
+		      //let's create arrays
+		      var bambini = [
+			  {display: "Bambini U6 665m", value: "0" }];
+		      var kinder = [
+			  {display: "Kinder U10 1,3km", value: "1" }];
+		      var schueler = [
+			  {display: "Kinder U14 2km", value: "2" }];
+
+		      var erw = [
+			  {display: "5km ab 14j", value: "3" },
+			  {display: "10km ab 14j", value: "4" },
+			  {display: "5km Nordic Walking ab 14j", value: "5" }];
+		      //If parent option is changed
+		      $("#geburtsjahr").change(function() {
+			  var parent = $(this).val(); //get option value from parent
+			  console.log(parent);
+			  if(parent>(ERSETZEJAHR-6)){ 
+			      listlaeufe(bambini);
+			  }
+			  else if(parent>(ERSETZEJAHR-10)){
+			      listlaeufe(kinder);
+			  }
+			  else if(parent>(ERSETZEJAHR-14)){
+			      listlaeufe(schueler);
+			  }
+			  else
+			  {
+			      listlaeufe(erw);
+			  }
+		      });
+		      $("#geburtsjahr").ready(function() {
+			  var parent = $(this).val(); //get option value from parent
+			  console.log(parent);
+			  if(parent>(ERSETZEJAHR-6)){ 
+			      listlaeufe(bambini);
+			  }
+			  else if(parent>(ERSETZEJAHR-10)){
+			      listlaeufe(kinder);
+			  }
+			  else if(parent>(ERSETZEJAHR-14)){
+			      listlaeufe(schueler);
+			  }
+			  else
+			  {
+			      listlaeufe(erw);
+			  }
+                      });
+
+    //function to populate child select box
+    function listlaeufe(array_list)
+    {
+      $("#strecke").html(""); //reset child options
+      $(array_list).each(function (i)
+      { //populate child options
+        if( i==0 )
+        {
+          $("#strecke").append("<option selected value=\""+array_list[i].value+"\">"+array_list[i].display+"</option>");
+        } else {
+          $("#strecke").append("<option value=\""+array_list[i].value+"\">"+array_list[i].display+"</option>");
+        }
+      });
+    }
+    
+    });
+  </script>
+  <title>Anmeldung zum ERSETZEN. Altenberger Berglauf ERSETZEJAHR</title>
+  
+</head>
+<body bgcolor="#ffffff" text="#000000" link="#0000ff" vlink="#840084" alink="#0000ff">
+
+
+  <table>
+    <tr>
+      <td>
+	<img src="http://tus-altenberge.de/wp-content/uploads/2016/05/LA_Logo_Rund_BL.jpg" width="220px"/>
+	</td>
+      <td style="vertical-align:bottom;">  <H2>    Anmeldung zum ERSETZEN. Altenberger Berglauf ERSETZEJAHR</H2> </td></tr>
+
+    <tr>
+      <td>
+      </td>
+      <td>
+	
+  <form action="meld.php" method="post">
+    <fieldset>
+      <legend>Pers&ouml;nliche Angaben</legend>
+      <table>
+	<tr><td><label for="vorname">Vorname:</label></td>
+	  <td> <input type="text" name="vorname" placeholder="Vorname" required /></td></tr>
+	<tr><td> <label for="nachname">Nachname:</label></td>
+	  <td> <input type="text" name="nachname" placeholder="Nachname"required /></td></tr>
+	<!--
+	<tr><td> <label for="plz">PLZ:</label></td>
+	  <td> <input  name="plz" placeholder="PLZ" pattern="[0-9]{5}" required/></td></tr>
+	-->
+	<tr><td> <label for="ort">Ort:</label></td>
+	  <td> <input type="text" name="ort" placeholder="Ort"  /></td></tr>
+	
+	<!--    <fieldset>
+		<table> 
+	<tr><td><label for="strasse">Straße:</label></td>
+	  <td> <input type="text" name="strasse" placeholder="Straße" required /></td></tr>
+	<tr><td><label for="hausnr">Hausnummer:</label></td>
+	  <td><input type="text" name="hausnr" placeholder="Hausnummer" required /></td></tr>
+	 </fieldset> -->
+	<tr><td><label for="geburtsjahr">Geburtsjahr:</label> </td>
+	  <td><select name="geburtsjahr" id="geburtsjahr">
+	    ERSETZEGBJOPR
+          </select></td></tr>
+        <tr><td colspan="2"> <input type="radio" id="m" name="geschlecht" value="m" required><label for="m">m&auml;nnlich</label>
+	    <input type="radio" id="w" name="geschlecht" value="w" required><label for="w">weiblich</label></td></tr>
+	
+<!--        <tr><td> <label for="telefon">Telefon:</label></td>
+	  <td> <input type="text" name="telefon" pattern="[0-9\- ]*" /> </td></tr> -->
+        <tr><td><label for="email">Email:</label></td>
+          <td> <input type="text" name="email" required /></td></tr>
+        <tr><td><label for="verein">Verein:</label></td>
+	  <td><input type="text" name="verein" /></td></tr>
+<!--        <tr><td colspan="2">
+	    <label for="1" style="width:20em;text-align:left">
+	      <input type="checkbox"  name="tus" value="1" id="1">
+	      Mitglied im TuS Altenberge
+	      </label></td></tr>
+-->
+      </table>    
+    </fieldset><br>
+
+    <fieldset>
+    <legend>Läufe</legend><p>Das Geburtsjahr bestimmt die Strecke.<br>Ggf. Mehrfachauswahl m&ouml;glich</p>
+    <select multiple name="strecke[]" id="strecke" required>
+    <!-- <select multiple name="strecke" id="strecke" required>
+      <option selected value="6">Laufkurs ERSETZEJAHR</option>  -->
+    </select>
+    
+
+    <label for="schnellsteraltenberger" style="width:20em;text-align:left">
+      <input type="checkbox" name="schnellsteraltenberger" value="1" id="1">
+      Teilnahme am Wettbewerb <i>Schnellste(r) Altenberger(in)</i></label>
+  </fieldset>
+<br>
+  <fieldset>
+      <legend>Erklärungen</legend>
+      
+      <input type="checkbox" name="datenerkl" value="1" id="1">
+      <label style="width:20em;text-align:center" for="datenerkl">
+	Ich akzeptiere die <a href="./Teilnahmebedingungen_Berglauf.html" target="TNB">Teilnahmebedingungen</a></label>
+    </fieldset><br>
+  
+
+    <br> 
+
+<fieldset>
+Bitte den Sicherheitscode abtippen:
+<img src="captcha/captcha.php" border="0" title="Sicherheitscode">
+<input type="text" name="sicherheitscode" size="5" required>
+</fieldset>
+  <p><input type="submit" value="Jetzt anmelden"></p>
+</form>
+<p class="center"><a href="http://www.laufen-in-altenberge.de">Hauptseite</a> <a href="./impressum.html">Impressum</a></p>
+      </td>
+      </tr></table>
+
+
+
+</body>
+</html>
+

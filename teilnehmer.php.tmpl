@@ -1,0 +1,40 @@
+<?php 
+include('kopf.html');
+require_once('lib/laufab.php');
+
+function cleanstr($str)
+{
+    $strs = strtr($str,";*\"", "xxx");
+    return filter_var($strs, FILTER_SANITIZE_STRING);
+}
+
+$sortierung = cleanstr($_GET['sort']);
+try {  # Verbindungsfehler fangen
+    
+    try { # SQL fehler fangen
+	
+	$lah = new laufab();
+
+	print "<table> <tr> <td>"
+      	      ."<img src=\"http://tus-altenberge.de/wp-content/uploads/2016/05/LA_Logo_Rund_BL.jpg\" width=\"220px\"/>"
+	      ."</td> <td style=\"vertical-align:bottom;\">  <H2>Teilnehmer des ERSETZEN. Altenberger Berglauf ERSETZEJAHR</H2> </td></tr>"
+	      ."<tr><td></td><td>";
+	
+	print "Sortiert nach <a href=\"teilnehmer.php?sort=name\">Name</a>,"
+	    . "<a href=\"teilnehmer.php?sort=lauf\">Lauf</a>"
+	    ." oder <a href=\"teilnehmer.php?sort=verein\">Verein</a><p>\n";
+	print $lah->ListeTeilnehmer($sortierung);
+	print "</td></tr></table><p>\n";
+	
+    } catch (Exception $e) {
+	echo "Failed: " . $e->getMessage();
+	die();
+    }
+    
+    $dbh = null;
+} catch (PDOException $e) {
+    print "Error!: " . $e->getMessage() . "<br/>";
+    die();
+}
+include('fuss.html');
+?>
